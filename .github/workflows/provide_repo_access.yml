@@ -1,0 +1,65 @@
+name: Provide Repo Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository_name:
+        description: 'GitHub Repository Name'
+        required: true
+        type: string
+      access_type:
+        description: 'Select whether to provide access to a team or a user'
+        required: true
+        type: choice
+        options:
+          - user
+          - team
+      collaborator_user:
+        description: 'GitHub username (only for user access)'
+        required: false
+        type: string
+      team_slug:
+        description: 'GitHub team slug (only for team access)'
+        required: false
+        type: string
+      permission:
+        description: 'Permission level'
+        required: true
+        type: choice
+        options:
+          - pull
+          - push
+          - admin
+
+jobs:
+  provide_access:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    - name: Configure AWS Credentials
+      run: echo "Setting up GitHub Token"
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Apply
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_ORG: ${{ secrets.GITHUB_ORG }}
+      run: |
+        terraform apply -auto-approve \
+          -var "github_token=${{ secrets.GITHUB_TOKEN }}" \
+          -var "github_organization=${{ secrets.GITHUB_ORG }}" \
+          -var "repository_name=${{ github.event.inputs.repository_name }}" \
+          -var "collaborator_user=${{ github.event.inputs.collaborator_user }}" \
+          -var "team_slug=${{ github.event.inputs.team_slug }}" \
+          -var "permission=${{ github.event.inputs.permission }}"
+
+    - name: Terraform Output
+      run: terraform output
